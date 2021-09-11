@@ -88,6 +88,11 @@ namespace SerializationComparison.UnitTests
                 {
                     null,
                     new MessagePackSerializerBehaviour()
+                },
+                new object[]
+                {
+                    null,
+                    new JsonNETSerializerBehaviour()
                 }
             };
 
@@ -123,6 +128,11 @@ namespace SerializationComparison.UnitTests
                 {
                     new SimpleObject { Id = 1, Name = "Gordon" },
                     new MessagePackSerializerBehaviour()
+                },
+                new object[]
+                {
+                    new SimpleObject { Id = 1, Name = "Gordon" },
+                    new JsonNETSerializerBehaviour()
                 }
             };
 
@@ -159,6 +169,11 @@ namespace SerializationComparison.UnitTests
                     GetComplexObject(),
                     new MessagePackSerializerBehaviour()
                 },
+                new object[]
+                {
+                    GetComplexObject(),
+                    new JsonNETSerializerBehaviour()
+                }
             };
 
         private static ComplexObject GetComplexObject()
@@ -247,6 +262,15 @@ namespace SerializationComparison.UnitTests
                         Name = "Gordon"
                     },
                     new MessagePackSerializerBehaviour()
+                },
+                new object[]
+                {
+                    new
+                    {
+                        Id = 1,
+                        Name = "Gordon"
+                    },
+                    new JsonNETSerializerBehaviour()
                 }
             };
     }

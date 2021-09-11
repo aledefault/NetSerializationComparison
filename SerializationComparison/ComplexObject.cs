@@ -1,4 +1,6 @@
 ﻿using MessagePack;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 using ProtoBuf;
 using System;
 using System.Collections.Generic;
@@ -7,6 +9,7 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Xml.Serialization;
+using System.Diagnostics;
 
 namespace SerializationComparison
 {
@@ -108,7 +111,8 @@ namespace SerializationComparison
     }
 
     [Serializable]
-    [JsonConverter(typeof(ToppingJsonConverter))]
+    [System.Text.Json.Serialization.JsonConverter(typeof(ToppingJsonConverter))]
+    [Newtonsoft.Json.JsonConverter(typeof(JsonCreationConverter))]
     [XmlInclude(typeof(ChocolateTopping))]
     [XmlInclude(typeof(PeanutTopping))]
     [XmlInclude(typeof(SomethingGreenTopping))]
@@ -215,7 +219,7 @@ namespace SerializationComparison
         }
     }
 
-    public class ToppingJsonConverter : JsonConverter<Topping>
+    public class ToppingJsonConverter : System.Text.Json.Serialization.JsonConverter<Topping>
     {
         enum TypeDiscriminator
         {
@@ -229,19 +233,19 @@ namespace SerializationComparison
         public override Topping Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             if (reader.TokenType != JsonTokenType.StartObject)
-                throw new JsonException();
+                throw new System.Text.Json.JsonException();
 
             reader.Read();
             if (reader.TokenType != JsonTokenType.PropertyName)
-                throw new JsonException();
+                throw new System.Text.Json.JsonException();
 
             string propertyName = reader.GetString();
             if (propertyName != "TypeDiscriminator")
-                throw new JsonException();
+                throw new System.Text.Json.JsonException();
 
             reader.Read();
             if (reader.TokenType != JsonTokenType.Number)
-                throw new JsonException();
+                throw new System.Text.Json.JsonException();
 
             var typeDiscriminator = (TypeDiscriminator)reader.GetInt32();
             Topping topping = typeDiscriminator switch
@@ -249,7 +253,7 @@ namespace SerializationComparison
                 TypeDiscriminator.Chocolate => new ChocolateTopping(),
                 TypeDiscriminator.Peanut => new PeanutTopping(),
                 TypeDiscriminator.SomethingGreen => new SomethingGreenTopping(),
-                _ => throw new JsonException()
+                _ => throw new System.Text.Json.JsonException()
             };
 
             while (reader.Read())
@@ -278,7 +282,7 @@ namespace SerializationComparison
                 }
             }
 
-            throw new JsonException();
+            throw new System.Text.Json.JsonException();
         }
 
         public override void Write(Utf8JsonWriter writer, Topping topping, JsonSerializerOptions options)
@@ -299,6 +303,63 @@ namespace SerializationComparison
             {
                 writer.WriteNumber("TypeDiscriminator", (int)TypeDiscriminator.SomethingGreen);
                 writer.WriteBoolean(nameof(SomethingGreenTopping.IsItSafe), xen.IsItSafe);
+            }
+
+            writer.WriteEndObject();
+        }
+    }
+
+    public class JsonCreationConverter : Newtonsoft.Json.JsonConverter
+    {
+        enum TypeDiscriminator
+        {
+            Chocolate = 1,
+            Peanut = 2,
+            SomethingGreen = 3
+        }
+
+        public override bool CanConvert(Type typeToConvert) => typeof(Topping).IsAssignableFrom(typeToConvert);
+
+        public override object ReadJson(JsonReader reader, Type objectType,
+            object existingValue, Newtonsoft.Json.JsonSerializer serializer)
+        {
+            JObject jo = JObject.Load(reader);
+            if (jo["TypeDiscriminator"].Value<int>() == (int)TypeDiscriminator.Chocolate)
+                return new ChocolateTopping { Origin = jo["Origin"].Value<string>() };
+
+            if (jo["TypeDiscriminator"].Value<int>() == (int)TypeDiscriminator.Peanut)
+                return new PeanutTopping { Fat = jo["Fat"].Value<int>() };
+
+            if (jo["TypeDiscriminator"].Value<int>() == (int)TypeDiscriminator.SomethingGreen)
+                return new SomethingGreenTopping { IsItSafe = jo["IsItSafe"].Value<bool>() };
+
+            return null;
+        }
+
+        public override void WriteJson(JsonWriter writer, object topping,  Newtonsoft.Json.JsonSerializer serializer)
+        {
+            writer.WriteStartObject();
+
+            if (topping is ChocolateTopping choco)
+            {
+                writer.WritePropertyName("TypeDiscriminator");
+                writer.WriteValue((int)TypeDiscriminator.Chocolate);
+                writer.WritePropertyName(nameof(ChocolateTopping.Origin));
+                writer.WriteValue(choco.Origin);
+            }
+            else if (topping is PeanutTopping peanut)
+            {
+                writer.WritePropertyName("TypeDiscriminator");
+                writer.WriteValue((int)TypeDiscriminator.Peanut);
+                writer.WritePropertyName(nameof(PeanutTopping.Fat));
+                writer.WriteValue(peanut.Fat);
+            }
+            else if (topping is SomethingGreenTopping xen)
+            {
+                writer.WritePropertyName("TypeDiscriminator");
+                writer.WriteValue((int)TypeDiscriminator.SomethingGreen);
+                writer.WritePropertyName(nameof(SomethingGreenTopping.IsItSafe));
+                writer.WriteValue(xen.IsItSafe);
             }
 
             writer.WriteEndObject();

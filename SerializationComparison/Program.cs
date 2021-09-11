@@ -37,6 +37,11 @@ var serializers = new List<dynamic>
     {
         Title = "MessagePack-CSharp ",
         Serializer = new Serializer(new MessagePackSerializerBehaviour()),
+    },
+    new
+    {
+        Title = "Json.NET ",
+        Serializer = new Serializer(new JsonNETSerializerBehaviour()),
     }
 };
 

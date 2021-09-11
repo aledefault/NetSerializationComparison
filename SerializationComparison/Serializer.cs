@@ -1,7 +1,9 @@
 ﻿using MessagePack;
+using Newtonsoft.Json;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
 using System.Xml.Serialization;
 
 namespace SerializationComparison
@@ -119,5 +121,27 @@ namespace SerializationComparison
         public byte[] Serialize(object entry) => MessagePackSerializer.Serialize(entry);
 
         public T Deserialize<T>(byte[] entry) => MessagePackSerializer.Deserialize<T>(entry);
+    }
+
+    public class JsonNETSerializerBehaviour : ISerializerBehaviour
+    {
+        //public byte[] Serialize(object entry) => Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(entry));
+        public byte[] Serialize(object entry)
+        {
+            using var stream = new MemoryStream();
+            using var streamWritter = new StreamWriter(stream, Encoding.UTF8);
+            using var writer = new JsonTextWriter(streamWritter) { Formatting = Formatting.None };
+            JsonSerializer.Create().Serialize(writer, entry);
+            writer.Flush();
+
+            return stream.ToArray();
+        }
+
+        public T Deserialize<T>(byte[] entry)
+        {
+            using var stream = new MemoryStream(entry);
+            using var reader = new StreamReader(stream);
+            return (T)JsonSerializer.Create().Deserialize(reader, typeof(T));
+        }
     }
 }
